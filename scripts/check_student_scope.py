@@ -54,7 +54,12 @@ def main() -> int:
             "teamXX/docs-name."
         )
 
-    files = changed_files(args.base, args.head)
+    try:
+        files = changed_files(args.base, args.head)
+    except subprocess.CalledProcessError as error:
+        detail = error.stderr.strip() or "unknown Git comparison error"
+        print(f"Unable to compare pull request commits: {detail}")
+        return 1
     blocked = [
         path for path in files if not path.startswith(ALLOWED_PREFIXES)
     ]
@@ -72,4 +77,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
