@@ -1,0 +1,48 @@
+INSERT INTO project (
+  project_id,
+  project_code,
+  project_name,
+  project_stage,
+  location,
+  total_investment,
+  status,
+  created_at,
+  updated_at
+) VALUES (
+  'P001',
+  'P001',
+  '脱敏教学示范项目',
+  '施工阶段',
+  '河北',
+  120000000,
+  'active',
+  '2026-07-03T00:00:00',
+  '2026-07-03T00:00:00'
+);
+
+INSERT INTO task_topic (topic_code, stage_name, topic_name, primary_table_name, form_name, status) VALUES
+('TP-01', '前期策划与基础资料', '项目基础信息管理', 'project', '项目登记表', 'open'),
+('TP-02', '前期策划与基础资料', '参建单位信息管理', 'organization', '参建单位信息表', 'open'),
+('TP-03', '前期策划与基础资料', '招标控制价登记', 'tender_control_price', '招标控制价登记表', 'open'),
+('TP-04', '前期策划与基础资料', '投标报价对比分析', 'bid_comparison', '报价对比分析表', 'open'),
+('TP-05', '前期策划与基础资料', '合同基础信息登记', 'contract', '合同基础信息表', 'open'),
+('TC-01', '合同与清单管理', '合同价款条款管理', 'contract_clause', '合同价款条款表', 'open'),
+('TC-02', '合同与清单管理', '工程量清单导入', 'boq_header', '工程量清单导入表', 'open'),
+('TC-03', '合同与清单管理', '清单项校验与异常检查', 'boq_item', '清单异常检查表', 'open'),
+('TC-04', '合同与清单管理', '清单综合单价分析', 'boq_rate_analysis', '综合单价分析表', 'open'),
+('TC-05', '合同与清单管理', '合同清单关联检索', 'form_index', '合同-清单索引表', 'open'),
+('TD-01', '目标成本与动态控制', '目标成本编制', 'target_cost', '目标成本编制表', 'open'),
+('TD-02', '目标成本与动态控制', '成本科目分解', 'target_cost_item', '成本分解明细表', 'open'),
+('TD-03', '目标成本与动态控制', '月度产值填报', 'progress_report', '月度产值填报表', 'open'),
+('TD-04', '目标成本与动态控制', '施工进度与产值对比', 'progress_comparison', '进度产值对比表', 'open'),
+('TD-05', '目标成本与动态控制', '材料价格信息管理', 'material_price', '材料价格信息表', 'open'),
+('TM-01', '计量支付与过程结算', '月度计量申报', 'measurement', '月度计量申报表', 'open'),
+('TM-02', '计量支付与过程结算', '计量审核记录', 'measurement_review', '计量审核记录表', 'open'),
+('TM-03', '计量支付与过程结算', '工程款支付申请', 'payment_request', '支付申请表', 'open'),
+('TM-04', '计量支付与过程结算', '支付审批与支付台账', 'payment_record', '支付审批台账表', 'open'),
+('TM-05', '计量支付与过程结算', '分包合同与结算管理', 'subcontract', '分包合同结算表', 'open'),
+('TF-01', '变更签证与收尾分析', '设计变更登记', 'change_order', '设计变更登记表', 'open'),
+('TF-02', '变更签证与收尾分析', '现场签证登记', 'site_visa', '现场签证表', 'open'),
+('TF-03', '变更签证与收尾分析', '变更签证费用测算', 'change_cost_estimate', '变更费用测算表', 'open'),
+('TF-04', '变更签证与收尾分析', '风险事件与预警管理', 'risk_alert', '风险预警表', 'open'),
+('TF-05', '变更签证与收尾分析', '竣工结算与综合驾驶舱', 'settlement', '竣工结算表 / 驾驶舱索引表', 'open');

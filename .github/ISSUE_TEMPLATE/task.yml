@@ -1,0 +1,84 @@
+name: 课程开发任务
+description: 创建一个可独立验收的学生开发任务
+title: "[Task] "
+labels:
+  - task
+body:
+  - type: markdown
+    attributes:
+      value: 请确保任务可在 1 至 2 学时内完成，并提供明确的标准答案。
+  - type: input
+    id: task_code
+    attributes:
+      label: 任务编号
+      placeholder: 例如 TP-01
+    validations:
+      required: true
+  - type: input
+    id: module
+    attributes:
+      label: 模块
+      placeholder: 例如 change-order
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: 负责小组和个人
+      placeholder: 例如 Team-03 / 张三
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 用户与业务场景
+    validations:
+      required: true
+  - type: textarea
+    id: inputs
+    attributes:
+      label: 输入数据与字段
+    validations:
+      required: true
+  - type: textarea
+    id: rules
+    attributes:
+      label: 必须执行的业务规则
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: 页面与输出要求
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 允许修改及禁止修改的范围
+    validations:
+      required: true
+  - type: input
+    id: branch
+    attributes:
+      label: 指定分支名
+      placeholder: team03/feat-project-register
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收用例与预期结果
+    validations:
+      required: true
+  - type: checkboxes
+    id: ready
+    attributes:
+      label: 发布前检查
+      options:
+        - label: 已提供脱敏示例数据
+          required: true
+        - label: 已提供人工标准答案
+          required: true
+        - label: 任务预计不超过 2 学时
+          required: true

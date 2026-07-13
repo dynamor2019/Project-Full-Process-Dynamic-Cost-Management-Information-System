@@ -1,0 +1,23 @@
+{
+  "name": "engineering-cost-management-system",
+  "version": "0.1.0",
+  "description": "工程项目全过程动态造价管理信息系统 — 课程基座",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "install:frontend": "npm install --prefix frontend",
+    "install:backend": "npm install --prefix backend",
+    "install": "npm run install:frontend && npm run install:backend",
+    "setup": "node scripts/setup-db.js",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev": "node scripts/dev.js",
+    "build": "npm run build --prefix frontend",
+    "test": "node scripts/test-all.js",
+    "check": "npm run build && npm test"
+  }
+}

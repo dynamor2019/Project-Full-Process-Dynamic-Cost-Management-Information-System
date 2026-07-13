@@ -1,0 +1,25 @@
+name: Student scope guard
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate student branch and changed files
+        run: >-
+          python scripts/check_student_scope.py
+          --base "${{ github.event.pull_request.base.sha }}"
+          --head "${{ github.event.pull_request.head.sha }}"
+          --actor "${{ github.actor }}"
+          --branch "${{ github.head_ref }}"
+

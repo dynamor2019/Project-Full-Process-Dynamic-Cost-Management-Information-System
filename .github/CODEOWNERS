@@ -1,0 +1,12 @@
+# 公共框架和治理文件必须由教师审核。
+* @dynamor2019
+/.github/ @dynamor2019
+/frontend/app.js @dynamor2019
+/frontend/styles.css @dynamor2019
+/frontend/index.html @dynamor2019
+/frontend/src/common/ @dynamor2019
+/backend/src/common/ @dynamor2019
+/database/ @dynamor2019
+/scripts/ @dynamor2019
+/docs/data-dictionary.md @dynamor2019
+/docs/framework-rules.md @dynamor2019

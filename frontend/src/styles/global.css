@@ -1,0 +1,12 @@
+:root {
+  --app-shell-bg: #f4efe6;
+  --app-panel-bg: #ffffff;
+  --app-brand: #145b58;
+  --app-text: #1f2937;
+}
+
+body {
+  margin: 0;
+  color: var(--app-text);
+  background: var(--app-shell-bg);
+}
