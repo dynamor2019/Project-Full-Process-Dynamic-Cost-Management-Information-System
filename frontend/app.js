@@ -1,6 +1,10 @@
+import { TASK_GUIDES } from "./task-guides.js?v=20260713";
+
 const app = document.getElementById("app");
 
 const STORAGE_KEY = "course_base_current_user";
+const TP01_RECORDS_KEY = "course_base_tp01_records";
+const TP01_UI_KEY = "course_base_tp01_ui";
 
 const nav_items = [
   { key: "home", icon: "house", label: "首页" },
@@ -73,6 +77,15 @@ const task_groups = [
 ];
 
 const all_tasks = task_groups.flatMap((group) => group.tasks);
+const task_meta_map = Object.fromEntries(
+  task_groups.flatMap((group) =>
+    group.tasks.map((task) => [task.code, { ...task, stage: group.stage }])
+  )
+);
+const task_route_map = {
+  "TP-01": "tp-01",
+  "TP-02": "tp-02",
+};
 
 // 每个任务的看板状态（progress 0-100，status: pending / active / done）
 // 后续接入真实后端后由接口返回；骨架阶段用静态演示数据占位。
@@ -179,6 +192,652 @@ function escape_html(value) {
 
 function get_stage_id(index) {
   return `stage-${index + 1}`;
+}
+
+function get_default_tp01_records() {
+  return [
+    {
+      id: "P001",
+      project_name: "脱敏教学示范项目A",
+      project_stage: "施工阶段",
+      location: "河北省廊坊市",
+      total_investment: 120000000,
+      owner_unit: "建设单位A",
+      status: "进行中",
+      progress: 72,
+      updated_at: "2026-07-13 09:00",
+    },
+    {
+      id: "P002",
+      project_name: "校园综合改造项目",
+      project_stage: "设计阶段",
+      location: "北京市",
+      total_investment: 85000000,
+      owner_unit: "建设单位B",
+      status: "策划中",
+      progress: 34,
+      updated_at: "2026-07-13 09:05",
+    },
+    {
+      id: "P003",
+      project_name: "市政管网更新项目",
+      project_stage: "招标阶段",
+      location: "河北省保定市",
+      total_investment: 68000000,
+      owner_unit: "建设单位C",
+      status: "待招标",
+      progress: 21,
+      updated_at: "2026-07-13 09:08",
+    },
+    {
+      id: "P004",
+      project_name: "产教融合中心新建项目",
+      project_stage: "策划阶段",
+      location: "天津市",
+      total_investment: 54000000,
+      owner_unit: "建设单位D",
+      status: "策划中",
+      progress: 18,
+      updated_at: "2026-07-13 09:10",
+    },
+  ];
+}
+
+function load_tp01_records() {
+  const raw = window.localStorage.getItem(TP01_RECORDS_KEY);
+  if (!raw) {
+    const defaults = get_default_tp01_records();
+    window.localStorage.setItem(TP01_RECORDS_KEY, JSON.stringify(defaults));
+    return defaults;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length ? parsed : get_default_tp01_records();
+  } catch {
+    const defaults = get_default_tp01_records();
+    window.localStorage.setItem(TP01_RECORDS_KEY, JSON.stringify(defaults));
+    return defaults;
+  }
+}
+
+function save_tp01_records(records) {
+  window.localStorage.setItem(TP01_RECORDS_KEY, JSON.stringify(records));
+}
+
+function load_tp01_ui_state(records) {
+  const fallback = {
+    keyword: "",
+    stage: "全部",
+    selectedId: records[0]?.id || "",
+  };
+  const raw = window.localStorage.getItem(TP01_UI_KEY);
+  if (!raw) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      keyword: typeof parsed.keyword === "string" ? parsed.keyword : fallback.keyword,
+      stage: typeof parsed.stage === "string" ? parsed.stage : fallback.stage,
+      selectedId: typeof parsed.selectedId === "string" ? parsed.selectedId : fallback.selectedId,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function save_tp01_ui_state(state) {
+  window.localStorage.setItem(TP01_UI_KEY, JSON.stringify(state));
+}
+
+function tp01_format_money(value) {
+  return `¥${Number(value || 0).toLocaleString("zh-CN")}`;
+}
+
+function tp01_next_id(records) {
+  const max_number = records.reduce((max_value, record) => {
+    const match = String(record.id || "").match(/^P(\d{3})$/);
+    if (!match) {
+      return max_value;
+    }
+    return Math.max(max_value, Number(match[1]));
+  }, 0);
+
+  return `P${String(max_number + 1).padStart(3, "0")}`;
+}
+
+function tp01_matches(record, keyword, stage) {
+  const keyword_text = String(keyword || "").trim().toLowerCase();
+  const record_stage = String(record.project_stage || "");
+  const stage_match = stage === "全部" || record_stage === stage;
+  if (!stage_match) {
+    return false;
+  }
+
+  if (!keyword_text) {
+    return true;
+  }
+
+  const joined = [
+    record.id,
+    record.project_name,
+    record.project_stage,
+    record.location,
+    record.owner_unit,
+    record.status,
+  ]
+    .map((item) => String(item || "").toLowerCase())
+    .join(" ");
+
+  return joined.includes(keyword_text);
+}
+
+function get_task_route(task_code) {
+  return task_route_map[task_code] || "navigation";
+}
+
+function get_task_guide(task_code) {
+  return TASK_GUIDES.find((item) => item.code === task_code) || null;
+}
+
+function get_task_meta(task_code) {
+  return task_meta_map[task_code] || null;
+}
+
+function render_list_items(items, ordered = false) {
+  const tag = ordered ? "ol" : "ul";
+  return `
+    <${tag} class="detail-list">
+      ${items.map((item) => `<li>${escape_html(item)}</li>`).join("")}
+    </${tag}>
+  `;
+}
+
+function render_tp01_page() {
+  const stage_options = [
+    "策划阶段",
+    "设计阶段",
+    "招标阶段",
+    "施工阶段",
+    "竣工阶段",
+  ];
+  const status_options = ["策划中", "待招标", "进行中", "已完成"];
+  const blank_record = {
+    id: "",
+    project_name: "",
+    project_stage: "策划阶段",
+    location: "",
+    total_investment: "",
+    owner_unit: "",
+    status: "策划中",
+  };
+
+  let records = load_tp01_records();
+  let ui_state = load_tp01_ui_state(records);
+  let keyword = ui_state.keyword || "";
+  let stage_filter = ui_state.stage || "全部";
+  let selected_id = ui_state.selectedId || records[0]?.id || "";
+  let editing_new = selected_id === "__new__";
+
+  const html = `
+    <div class="page">
+      <section class="card">
+        <div class="section-title">
+          <div>
+            <h2 style="display:flex;align-items:center;gap:8px">
+              <i data-lucide="file-text" style="width:20px;height:20px"></i>
+              TP-01 项目基础信息管理
+            </h2>
+            <p style="margin-top:8px;color:var(--muted)">
+              完整示例页：项目查询、项目编辑、项目新增、字段校验、统一索引预览。
+            </p>
+          </div>
+          <button class="chip" type="button" data-route="navigation">返回模块导航</button>
+        </div>
+        <p style="margin:0">
+          本页对应项目的“项目身份证”，所有后续任务都应围绕这里的项目编号进行关联检索。
+        </p>
+      </section>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <strong id="tp01-total-count">0</strong>
+          <span>项目总数</span>
+        </div>
+        <div class="stat-card">
+          <strong id="tp01-active-count">0</strong>
+          <span>进行中项目</span>
+        </div>
+        <div class="stat-card">
+          <strong id="tp01-investment-total">¥0</strong>
+          <span>总投资合计</span>
+        </div>
+        <div class="stat-card">
+          <strong id="tp01-selected-title">未选择</strong>
+          <span>当前编辑对象</span>
+        </div>
+      </div>
+
+      <section class="card">
+        <div class="tp01-toolbar">
+          <div class="tp01-control">
+            <label for="tp01-keyword">关键词</label>
+            <input id="tp01-keyword" type="search" value="${escape_html(keyword)}" placeholder="按项目编号、名称、地点、单位检索" />
+          </div>
+          <div class="tp01-control">
+            <label for="tp01-stage-filter">阶段筛选</label>
+            <select id="tp01-stage-filter">
+              <option value="全部"${stage_filter === "全部" ? " selected" : ""}>全部阶段</option>
+              ${stage_options.map((item) => `<option value="${item}"${stage_filter === item ? " selected" : ""}>${item}</option>`).join("")}
+            </select>
+          </div>
+          <div class="tp01-toolbar-actions">
+            <button class="button button-ghost" type="button" id="tp01-reset">重置筛选</button>
+            <button class="button button-primary" type="button" id="tp01-new">新增项目</button>
+          </div>
+        </div>
+
+        <div class="tp01-layout">
+          <div class="tp01-table-wrap">
+            <table class="tp01-table" aria-label="项目基础信息列表">
+              <thead>
+                <tr>
+                  <th>项目编号</th>
+                  <th>项目名称</th>
+                  <th>阶段</th>
+                  <th>地点</th>
+                  <th>总投资</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="tp01-table-body"></tbody>
+            </table>
+          </div>
+
+          <aside class="card tp01-form-card">
+            <div class="section-title">
+              <h3 id="tp01-form-title">编辑项目</h3>
+              <small>保存后更新统一索引示意</small>
+            </div>
+
+            <form class="form tp01-form" id="tp01-form">
+              <input type="hidden" name="id" id="tp01-id" value="" />
+              <div class="field">
+                <label for="tp01-project_name">项目名称</label>
+                <input id="tp01-project_name" name="project_name" type="text" maxlength="60" required />
+              </div>
+              <div class="field">
+                <label for="tp01-project_stage">项目阶段</label>
+                <select id="tp01-project_stage" name="project_stage">
+                  ${stage_options.map((item) => `<option value="${item}">${item}</option>`).join("")}
+                </select>
+              </div>
+              <div class="field">
+                <label for="tp01-location">建设地点</label>
+                <input id="tp01-location" name="location" type="text" maxlength="60" required />
+              </div>
+              <div class="field">
+                <label for="tp01-total_investment">总投资</label>
+                <input id="tp01-total_investment" name="total_investment" type="number" min="1" step="1" required />
+              </div>
+              <div class="field">
+                <label for="tp01-owner_unit">建设单位</label>
+                <input id="tp01-owner_unit" name="owner_unit" type="text" maxlength="60" required />
+              </div>
+              <div class="field">
+                <label for="tp01-status">当前状态</label>
+                <select id="tp01-status" name="status">
+                  ${status_options.map((item) => `<option value="${item}">${item}</option>`).join("")}
+                </select>
+              </div>
+
+              <div class="tp01-note" id="tp01-note">
+                索引示意：<code>form_index</code> ← <code>project</code>。保存后会同步显示项目名称、阶段、地点和更新时间。
+              </div>
+
+              <div class="actions">
+                <button class="button button-primary" type="submit" id="tp01-submit">保存项目</button>
+                <button class="button button-ghost" type="button" id="tp01-clear">清空表单</button>
+              </div>
+            </form>
+          </aside>
+        </div>
+      </section>
+    </div>
+  `;
+
+  const mount = document.querySelector(".workspace-body");
+  if (mount) {
+    mount.innerHTML = html;
+  } else {
+    app.innerHTML = html;
+  }
+
+  const keyword_input = document.getElementById("tp01-keyword");
+  const stage_select = document.getElementById("tp01-stage-filter");
+  const reset_button = document.getElementById("tp01-reset");
+  const new_button = document.getElementById("tp01-new");
+  const table_body = document.getElementById("tp01-table-body");
+  const form = document.getElementById("tp01-form");
+  const form_title = document.getElementById("tp01-form-title");
+  const submit_button = document.getElementById("tp01-submit");
+  const clear_button = document.getElementById("tp01-clear");
+  const note = document.getElementById("tp01-note");
+  const form_fields = {
+    id: document.getElementById("tp01-id"),
+    project_name: document.getElementById("tp01-project_name"),
+    project_stage: document.getElementById("tp01-project_stage"),
+    location: document.getElementById("tp01-location"),
+    total_investment: document.getElementById("tp01-total_investment"),
+    owner_unit: document.getElementById("tp01-owner_unit"),
+    status: document.getElementById("tp01-status"),
+  };
+  const summary_fields = {
+    total: document.getElementById("tp01-total-count"),
+    active: document.getElementById("tp01-active-count"),
+    investment: document.getElementById("tp01-investment-total"),
+    selected: document.getElementById("tp01-selected-title"),
+  };
+
+  function get_filtered_records() {
+    return records.filter((record) => tp01_matches(record, keyword, stage_filter));
+  }
+
+  function get_selected_record() {
+    if (editing_new) {
+      return null;
+    }
+
+    return records.find((record) => record.id === selected_id) || null;
+  }
+
+  function fill_form(record) {
+    const current = record || blank_record;
+    form_fields.id.value = current.id || "";
+    form_fields.project_name.value = current.project_name || "";
+    form_fields.project_stage.value = current.project_stage || stage_options[0];
+    form_fields.location.value = current.location || "";
+    form_fields.total_investment.value = current.total_investment || "";
+    form_fields.owner_unit.value = current.owner_unit || "";
+    form_fields.status.value = current.status || status_options[0];
+    form_title.textContent = current.id ? `编辑项目 ${current.id}` : "新增项目";
+    submit_button.textContent = current.id ? "保存修改" : "保存新增";
+    note.textContent = current.id
+      ? `索引示意：form_index ← project / ${current.id} / ${current.project_name} / ${current.project_stage}`
+      : "索引示意：form_index ← project / 新增记录 / 保存后自动生成项目编号。";
+  }
+
+  function render_summary() {
+    const active_count = records.filter((record) => record.status === "进行中").length;
+    const total_investment = records.reduce((sum, record) => sum + Number(record.total_investment || 0), 0);
+    const selected_record = get_selected_record();
+
+    summary_fields.total.textContent = String(records.length);
+    summary_fields.active.textContent = String(active_count);
+    summary_fields.investment.textContent = tp01_format_money(total_investment);
+    summary_fields.selected.textContent = selected_record
+      ? `${selected_record.id} · ${selected_record.project_name}`
+      : editing_new
+        ? "新建项目"
+        : "未选择";
+  }
+
+  function render_table(filtered) {
+    if (!filtered.length) {
+      table_body.innerHTML = `
+        <tr>
+          <td colspan="7" style="padding:20px;color:var(--muted);text-align:center;">
+            当前条件下没有匹配项目，试试重置筛选或新增一个示例项目。
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    table_body.innerHTML = filtered
+      .map((record) => {
+        const active_class = record.id === selected_id && !editing_new ? "tp01-row--active" : "";
+        return `
+          <tr class="${active_class}">
+            <td><strong>${escape_html(record.id)}</strong></td>
+            <td>${escape_html(record.project_name)}</td>
+            <td><span class="tp01-pill">${escape_html(record.project_stage)}</span></td>
+            <td>${escape_html(record.location)}</td>
+            <td>${tp01_format_money(record.total_investment)}</td>
+            <td>${escape_html(record.status)}</td>
+            <td>
+              <div class="tp01-row-actions">
+                <button class="button button-ghost button-sm" type="button" data-tp01-edit="${escape_html(record.id)}">编辑</button>
+                <button class="button button-ghost button-sm" type="button" data-tp01-pick="${escape_html(record.id)}">查看</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function refresh_view() {
+    const filtered = get_filtered_records();
+    const fallback_selected = filtered[0] || records[0] || null;
+
+    if (!editing_new && selected_id && !records.some((record) => record.id === selected_id)) {
+      selected_id = fallback_selected?.id || "";
+    }
+
+    if (!editing_new && selected_id && !filtered.some((record) => record.id === selected_id)) {
+      selected_id = filtered[0]?.id || fallback_selected?.id || "";
+    }
+
+    render_summary();
+    render_table(filtered);
+    fill_form(editing_new ? null : get_selected_record() || fallback_selected);
+    keyword_input.value = keyword;
+    stage_select.value = stage_filter;
+  }
+
+  keyword_input.addEventListener("input", () => {
+    keyword = keyword_input.value;
+    ui_state = { keyword, stage: stage_filter, selectedId: editing_new ? "__new__" : selected_id };
+    save_tp01_ui_state(ui_state);
+    refresh_view();
+  });
+
+  stage_select.addEventListener("change", () => {
+    stage_filter = stage_select.value;
+    ui_state = { keyword, stage: stage_filter, selectedId: editing_new ? "__new__" : selected_id };
+    save_tp01_ui_state(ui_state);
+    refresh_view();
+  });
+
+  reset_button.addEventListener("click", () => {
+    keyword = "";
+    stage_filter = "全部";
+    selected_id = records[0]?.id || "";
+    editing_new = false;
+    ui_state = { keyword, stage: stage_filter, selectedId: selected_id };
+    save_tp01_ui_state(ui_state);
+    refresh_view();
+  });
+
+  new_button.addEventListener("click", () => {
+    editing_new = true;
+    selected_id = "__new__";
+    ui_state = { keyword, stage: stage_filter, selectedId: selected_id };
+    save_tp01_ui_state(ui_state);
+    fill_form(null);
+    render_summary();
+    render_table(get_filtered_records());
+  });
+
+  table_body.addEventListener("click", (event) => {
+    const edit_button = event.target.closest("[data-tp01-edit]");
+    const pick_button = event.target.closest("[data-tp01-pick]");
+    const target = edit_button || pick_button;
+    if (!target) {
+      return;
+    }
+
+    const record_id = target.dataset.tp01Edit || target.dataset.tp01Pick;
+    selected_id = record_id;
+    editing_new = false;
+    ui_state = { keyword, stage: stage_filter, selectedId: selected_id };
+    save_tp01_ui_state(ui_state);
+    refresh_view();
+  });
+
+  clear_button.addEventListener("click", () => {
+    editing_new = true;
+    selected_id = "__new__";
+    ui_state = { keyword, stage: stage_filter, selectedId: selected_id };
+    save_tp01_ui_state(ui_state);
+    fill_form(null);
+    render_summary();
+    render_table(get_filtered_records());
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const form_data = new FormData(form);
+    const project_name = String(form_data.get("project_name") || "").trim();
+    const project_stage = String(form_data.get("project_stage") || "");
+    const location = String(form_data.get("location") || "").trim();
+    const owner_unit = String(form_data.get("owner_unit") || "").trim();
+    const status = String(form_data.get("status") || "");
+    const total_investment = Number(form_data.get("total_investment") || 0);
+    const id = String(form_data.get("id") || "").trim();
+
+    if (!project_name || !location || !owner_unit) {
+      alert("项目名称、建设地点和建设单位不能为空。");
+      return;
+    }
+
+    if (!stage_options.includes(project_stage)) {
+      alert("项目阶段不合法。");
+      return;
+    }
+
+    if (!status_options.includes(status)) {
+      alert("当前状态不合法。");
+      return;
+    }
+
+    if (!Number.isFinite(total_investment) || total_investment <= 0) {
+      alert("总投资必须大于 0。");
+      return;
+    }
+
+    const payload = {
+      id: id || tp01_next_id(records),
+      project_name,
+      project_stage,
+      location,
+      total_investment,
+      owner_unit,
+      status,
+      progress: Math.max(0, Math.min(100, Math.round(total_investment / 1000000) % 101)),
+      updated_at: new Date().toLocaleString("zh-CN", { hour12: false }),
+    };
+
+    const next_records = id
+      ? records.map((record) => (record.id === id ? payload : record))
+      : [payload, ...records];
+
+    records = next_records;
+    save_tp01_records(records);
+    selected_id = payload.id;
+    editing_new = false;
+    ui_state = { keyword, stage: stage_filter, selectedId: selected_id };
+    save_tp01_ui_state(ui_state);
+    refresh_view();
+  });
+
+  refresh_view();
+
+  return html;
+}
+
+function render_task_detail_page(task_code) {
+  if (task_code === "TP-01") {
+    return render_tp01_page();
+  }
+
+  const guide = get_task_guide(task_code);
+  const meta = get_task_meta(task_code);
+
+  if (!guide || !meta) {
+    return render_navigation_page();
+  }
+
+  const task_route = get_task_route(task_code);
+  const first_page = guide.pages?.[0] || "页面示例";
+
+  return `
+    <div class="page">
+      <section class="card">
+        <div class="section-title">
+          <div>
+            <h2 style="display:flex;align-items:center;gap:8px">
+              <i data-lucide="file-text" style="width:20px;height:20px"></i>
+              ${escape_html(task_code)} ${escape_html(guide.title)}
+            </h2>
+            <p style="margin-top:8px;color:var(--muted)">
+              ${escape_html(meta.stage)} · ${escape_html(meta.table)} · ${escape_html(meta.form)}
+            </p>
+          </div>
+          <button class="chip" type="button" data-route="navigation">返回模块导航</button>
+        </div>
+        <p style="margin:0">${escape_html(guide.background)}</p>
+      </section>
+
+      <div class="grid">
+        <article class="card">
+          <h3>任务概览</h3>
+          <p>${escape_html(first_page)}</p>
+          <div class="feature-grid" style="margin-top:12px">
+            <div class="feature-item">表：${escape_html(meta.table)}</div>
+            <div class="feature-item">表单：${escape_html(meta.form)}</div>
+            <div class="feature-item">阶段：${escape_html(meta.stage)}</div>
+            <div class="feature-item">示例页：${escape_html(task_route)}</div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>业务规则</h3>
+          <p>${escape_html(guide.rule)}</p>
+          ${render_list_items(guide.acceptance || [])}
+        </article>
+        <article class="card">
+          <h3>接口清单</h3>
+          ${render_list_items(guide.apis || [])}
+        </article>
+        <article class="card">
+          <h3>页面与数据</h3>
+          ${render_list_items([
+            ...(guide.pages || []),
+            ...(guide.sample_data || []),
+          ])}
+        </article>
+      </div>
+
+      <section class="card">
+        <div class="section-title">
+          <h3>开发步骤</h3>
+        </div>
+        ${render_list_items(guide.steps || [], true)}
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h3>参考资料</h3>
+        </div>
+        ${render_list_items(guide.resources || [])}
+      </section>
+    </div>
+  `;
 }
 
 function render_login() {
@@ -449,6 +1108,7 @@ function render_dashboard_page() {
               <div class="kboard-lane__cards">
                 ${group.tasks.map((task) => {
                   const st = task_status_map[task.code] || { status: "pending", progress: 0, group: "待认领" };
+                  const task_route = get_task_route(task.code);
                   const badge_map = {
                     done:    ["badge-done",    "已完成"],
                     active:  ["badge-active",  "开发中"],
@@ -457,7 +1117,7 @@ function render_dashboard_page() {
                   const [badge_cls, badge_txt] = badge_map[st.status] || badge_map.pending;
                   return `
                     <article class="kboard-card kboard-card--${st.status}"
-                             data-route="navigation"
+                             data-route="${task_route}"
                              role="button" tabindex="0"
                              aria-label="进入 ${escape_html(task.title)}">
                       <div class="kboard-card__head">
@@ -471,7 +1131,7 @@ function render_dashboard_page() {
                       </div>
                       <div class="kboard-card__footer">
                         <span class="kboard-card__pct">${st.progress}%</span>
-                        <span class="kboard-card__action">进入模块 ›</span>
+                        <span class="kboard-card__action">${task_route === "navigation" ? "进入模块导航 ›" : "打开示例页 ›"}</span>
                       </div>
                     </article>
                   `;
@@ -510,8 +1170,11 @@ function render_navigation_page() {
                 <div class="task-grid">
                   ${group.tasks
                     .map(
-                      (task) => `
-                        <article class="task-card">
+                      (task) => {
+                        const task_route = get_task_route(task.code);
+                        const clickable = task_route !== "navigation";
+                        return `
+                        <article class="task-card"${clickable ? ` data-route="${task_route}" role="button" tabindex="0"` : ""}>
                           <div class="task-code">${escape_html(task.code)}</div>
                           <strong>${escape_html(task.title)}</strong>
                           <span>${escape_html(task.note)}</span>
@@ -521,8 +1184,10 @@ function render_navigation_page() {
                           <div class="task-meta">
                             <b>表单</b>${escape_html(task.form)}
                           </div>
+                          ${clickable ? `<div class="task-meta"><b>示例页</b>${escape_html(task_route)}</div>` : ""}
                         </article>
-                      `
+                      `;
+                      }
                     )
                     .join("")}
                 </div>
@@ -738,6 +1403,8 @@ function render_workspace(user, route) {
     project: render_project_page(),
     dashboard: render_dashboard_page(),
     navigation: render_navigation_page(),
+    "tp-01": "",
+    "tp-02": () => render_task_detail_page("TP-02"),
     acceptance: render_acceptance_page(),
     showcase: render_showcase_page(),
     tasks: render_tasks_page(),
@@ -745,12 +1412,14 @@ function render_workspace(user, route) {
     help: render_help_page(),
   };
 
-  const page_content = page_map[route] || page_map.home;
+  const page_content = typeof page_map[route] === "function" ? page_map[route]() : (page_map[route] || page_map.home);
   const title_map = {
     home: "首页",
     project: "项目总览",
     dashboard: "全过程看板",
     navigation: "模块导航",
+    "tp-01": "TP-01 项目基础信息管理",
+    "tp-02": "TP-02 参建单位信息管理",
     acceptance: "验收标准",
     showcase: "统一展示页",
     tasks: "任务中心",
@@ -759,7 +1428,8 @@ function render_workspace(user, route) {
   };
   const topbar_icons = {
     home: "house", project: "folder-open", dashboard: "layout-dashboard",
-    navigation: "map", acceptance: "check-circle", showcase: "monitor",
+    navigation: "map", "tp-01": "file-text", "tp-02": "users",
+    acceptance: "check-circle", showcase: "monitor",
     tasks: "list-checks", settings: "settings", help: "circle-help",
   };
 
@@ -804,6 +1474,10 @@ function render_workspace(user, route) {
     </main>
   `;
 
+  if (route === "tp-01") {
+    render_tp01_page();
+  }
+
   document.getElementById("logout-btn").addEventListener("click", () => {
     clear_current_user();
     window.location.hash = "";
@@ -811,8 +1485,16 @@ function render_workspace(user, route) {
   });
 
   app.querySelectorAll("[data-route]").forEach((button) => {
-    button.addEventListener("click", () => {
+    const go = () => {
       set_route(button.dataset.route);
+    };
+
+    button.addEventListener("click", go);
+    button.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        go();
+      }
     });
   });
 
@@ -830,14 +1512,6 @@ function render_workspace(user, route) {
     });
   });
 
-  // 看板模块卡片点击 — 跳转到模块导航
-  app.querySelectorAll(".kboard-card[data-route]").forEach((card) => {
-    const go = () => set_route(card.dataset.route);
-    card.addEventListener("click", go);
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); }
-    });
-  });
 }
 
 function render() {

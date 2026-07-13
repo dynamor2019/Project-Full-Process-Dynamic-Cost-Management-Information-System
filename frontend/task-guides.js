@@ -49,6 +49,48 @@ const TASK_GUIDES = [
     "展示 2 条以上示例数据"
   ]
 },
+{
+  code: "TP-02",
+  title: "参建单位信息管理",
+  background: "工程项目除了项目本身，还必须明确建设单位、设计单位、监理单位、施工单位和咨询单位等参建主体。本任务负责维护参建单位主数据，让后续合同、计量、变更和索赔单据都能按单位名称和角色快速检索，并通过统一索引表形成跨模块关联。",
+  resources: [
+    "搜索‘参建单位信息表’或‘工程项目参建单位台账’，理解常见字段结构",
+    "阅读 database/schema.sql 中 organization 表与 form_index 的字段定义",
+    "阅读 database/seed.sql，确认教师预置的单位示例数据",
+    "整理本项目常见参建角色：建设单位、监理单位、设计单位、施工单位、咨询单位"
+  ],
+  steps: [
+    "第1步【理解数据】：先梳理参建单位的角色、名称、联系人、联系电话、统一社会信用代码和关联项目编号，形成字段清单",
+    "第2步【后端接口】：在 backend/src/modules/organization/ 下新建 organization.router.js，实现 GET /api/organization、GET /api/organization/:id、POST /api/organization 和 PUT /api/organization/:id",
+    "第3步【条件查询】：实现按单位名称、单位角色和所属项目编号的组合筛选，返回可复用的单位列表",
+    "第4步【前端页面】：在 frontend/src/modules/organization/ 下新建 OrganizationListPage.jsx，展示单位列表、角色标签和检索条件",
+    "第5步【编辑表单】：新增/修改表单至少包含 organization_name、org_role、project_id、contact_person、contact_phone 五个字段",
+    "第6步【统一索引】：在保存单位信息后，同步更新 form_index 中 source_table='organization' 的记录，保证跨模块检索能命中",
+    "第7步【测试】：准备 2 条以上不同角色的单位数据，验证新增、修改、筛选和索引检索"
+  ],
+  apis: [
+    "GET  /api/organization          — 读取单位列表",
+    "GET  /api/organization/:id      — 读取单个单位详情",
+    "POST /api/organization          — 新增单位信息",
+    "PUT  /api/organization/:id      — 修改单位信息"
+  ],
+  pages: [
+    "单位列表页：支持按名称、角色和项目编号筛选",
+    "单位编辑表单：至少包含单位名称、角色、联系人、电话、关联项目四类信息"
+  ],
+  rule: "业务规则：参建单位名称不能为空，org_role 只能在建设单位 / 监理单位 / 设计单位 / 施工单位 / 咨询单位 中选择；同一项目下同一角色的单位名称不允许重复。不符合时前端提示错误，后端接口返回 400。",
+  sample_data: [
+    "单位名称：河北省建设发展有限公司，角色：建设单位，关联项目：P001，联系人：张三，电话：13800000001",
+    "单位名称：华北工程监理有限公司，角色：监理单位，关联项目：P001，联系人：李四，电话：13800000002"
+  ],
+  acceptance: [
+    "能按单位名称和角色筛选到对应记录",
+    "能新增一条单位记录并同步写入 form_index",
+    "修改单位角色后，列表页和索引检索结果同时更新",
+    "输入重复角色+重复名称时，接口返回 400 并提示重复",
+    "展示 2 条以上示例数据"
+  ]
+},
 ];
 
 export { TASK_GUIDES };
