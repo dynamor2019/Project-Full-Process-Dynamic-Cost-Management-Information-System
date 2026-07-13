@@ -4,6 +4,10 @@
 
 当前网站与仓库检查结果见 `docs/site-audit-2026-07-13.md`。
 
+- GitHub 仓库：https://github.com/dynamor2019/Project-Full-Process-Dynamic-Cost-Management-Information-System
+- 在线预览：https://dynamor2019.github.io/Project-Full-Process-Dynamic-Cost-Management-Information-System/
+- 学生协作规则：`docs/github-student-workflow.md`
+
 ## 项目目的
 
 本项目的首要目的不是把学生培养成传统程序员，也不是追求功能庞大的商业软件，而是以一个统一的工程造价管理信息系统为载体，让缺少系统开发经验的工程造价学生学会使用 AI 编程工具，把真实的工程管理问题转化为可执行任务，并通过团队协作完成可运行、可验证、可交付的课程作品。
